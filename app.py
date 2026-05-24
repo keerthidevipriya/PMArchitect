@@ -1,138 +1,80 @@
 import os
-import time
 import streamlit as st
-from crewai import Agent, Crew, Process, Task
+import google.generativeai as genai
 
+# 1. Authenticate using the key saved in Replit Secrets
 api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 if not api_key:
-    st.error("⚠️ GOOGLE_API_KEY is not set. Please check your Replit Secrets.")
+    st.error("⚠️ GOOGLE_API_KEY is not set. Please check your Replit Secrets tool.")
     st.stop()
 
-os.environ["GEMINI_API_KEY"] = api_key
-
-# gemini-2.0-flash-lite: best free-tier limits (30 RPM, 1500 RPD)
-GEMINI_MODEL = "gemini/gemini-2.0-flash-lite"
+genai.configure(api_key=api_key)
 
 
-def run_with_retry(crew, max_retries=5):
-    for attempt in range(max_retries):
-        try:
-            return crew.kickoff()
-        except Exception as e:
-            msg = str(e)
-            if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
-                wait = 30 * (attempt + 1)
-                st.warning(f"⏳ Rate limit hit — waiting {wait}s before retry {attempt + 1}/{max_retries}…")
-                time.sleep(wait)
-            else:
-                raise
-    raise RuntimeError("Max retries exceeded. Please wait a minute and try again.")
-
-
+# 2. Multi-Agent Emulation Workflow (Single-request architecture)
 def run_agentic_workflow(prd_text):
-    pm_analyst = Agent(
-        role="Product Management Analyst",
-        goal="Extract high-level features and write perfect user stories from a PRD.",
-        backstory=(
-            "You are an expert TPM. You take messy feature descriptions and turn them "
-            "into structured user stories using the standard 'As a... I want to... So that...' format."
-        ),
-        verbose=False,
-        llm=GEMINI_MODEL,
-    )
+    # We instruct the premier 2.0-flash model to run the multi-agent chain internally
+    prompt = f"""
+    You are an elite AI Technical Program Management Crew consisting of three distinct agents. 
+    You must process the following Product Requirement Document (PRD) sequentially and output the collaboration logs along with the final Jira tickets.
 
-    tech_lead = Agent(
-        role="Technical Lead",
-        goal="Break down user stories into granular engineering tasks and identify technical blockers.",
-        backstory=(
-            "You are a seasoned Software Architect. You look at user stories and outline the specific "
-            "backend, frontend, and database tasks required, flagging dependencies."
-        ),
-        verbose=False,
-        llm=GEMINI_MODEL,
-    )
+    PRD TEXT:
+    {prd_text}
 
-    tpm_critic = Agent(
-        role="TPM Quality Assurance Critic",
-        goal="Review the generated tasks to ensure they meet strict acceptance criteria standards.",
-        backstory=(
-            "You are a meticulous Senior Program Manager. If any engineering task lacks clear "
-            "Acceptance Criteria or formatting, you reject it and demand a rewrite."
-        ),
-        verbose=False,
-        llm=GEMINI_MODEL,
-    )
+    ----------------------------------------------------------------------
+    STEP 1: [Product Management Analyst]
+    Goal: Extract high-level features and write perfect user stories using the 'As a... I want to... So that...' format.
 
-    task1 = Task(
-        description=f"Analyze this PRD text and extract the core User Stories:\n\n{prd_text}",
-        expected_output="A list of clearly formatted User Stories.",
-        agent=pm_analyst,
-    )
+    STEP 2: [Technical Lead]
+    Goal: Take the user stories from Step 1 and break them down into granular engineering tasks (Frontend, Backend, Database) and note any technical blockers.
 
-    task2 = Task(
-        description="Take the User Stories and break them down into technical sub-tasks (API, Database, Frontend) with technical notes.",
-        expected_output="Technical implementation breakdown per user story.",
-        agent=tech_lead,
-    )
+    STEP 3: [TPM Quality Assurance Critic]
+    Goal: Review the output of Step 1 and Step 2. Format everything into neat, clean Markdown tables ready to copy-paste straight into Jira, ensuring explicit 'Acceptance Criteria' are defined for every ticket.
+    ----------------------------------------------------------------------
 
-    task3 = Task(
-        description=(
-            "Review the output. Ensure every story has clear 'Acceptance Criteria' "
-            "and is formatted in clean Markdown tables ready for Jira."
-        ),
-        expected_output="Final polished markdown output with Epics, Stories, Technical Tasks, and Acceptance Criteria.",
-        agent=tpm_critic,
-    )
+    Provide your response in two clear sections:
+    1. 🤝 **Agent Collaboration Logs**: A brief summary of what each agent contributed during the process loop.
+    2. 📋 **Final Jira Backlog**: The polished markdown tables with Epics, Stories, Technical Tasks, and Acceptance Criteria.
+    """
 
-    crew = Crew(
-        agents=[pm_analyst, tech_lead, tpm_critic],
-        tasks=[task1, task2, task3],
-        process=Process.sequential,
-    )
-
-    return run_with_retry(crew)
+    model = genai.GenerativeModel("gemini-2.0-flash")
+    response = model.generate_content(prompt)
+    return response.text
 
 
-# --- Streamlit UI ---
-st.set_page_config(page_title="AI Co-TPM Agent", page_icon="🤖", layout="wide")
+# --- Streamlit UI Setup ---
+st.set_page_config(page_title="AI Co-TPM Agent", layout="wide")
 st.title("🤖 AI Co-TPM: PRD to Jira Ticket Generator")
 st.markdown(
-    "Multi-agent workflow powered by **Google Gemini** (PM Analyst → Tech Lead → TPM Critic)."
+    "**Architecture:** Multi-Agent Pipeline (PM Analyst ➔ Tech Lead ➔ TPM Critic) optimized for Free-Tier performance."
 )
-st.info(
-    "ℹ️ Using **gemini-2.0-flash-lite** (free tier: 30 req/min). "
-    "If rate-limited, the app will automatically retry with a short wait.",
-    icon="💡",
-)
-st.divider()
+st.markdown("---")
 
+# Preloaded Dummy Data
 dummy_prd = """
 # PRD: User Authentication Upgrade
 We need to add Multi-Factor Authentication (MFA) to our user login flow.
 Users should be able to opt-in via their settings page. We will support TOTP (Google Authenticator).
 If a user has MFA enabled, intercept the login route to require the 6-digit token before issuing a JWT.
-""".strip()
+"""
 
-if st.button("✨ Load Demo PRD"):
-    st.session_state["prd_input"] = dummy_prd
+if st.button("✨ Load Demo Dummy PRD"):
+    st.session_state["prd_input"] = dummy_prd.strip()
 
 prd_input = st.text_area(
-    "Paste your Product Requirement Document (PRD) here:",
+    "Paste Product Requirement Document (PRD) here:",
     value=st.session_state.get("prd_input", ""),
     height=250,
-    placeholder="Describe the feature or product requirement…",
 )
 
 if st.button("🚀 Generate Jira Backlog", type="primary"):
-    if not prd_input.strip():
+    if not prd_input:
         st.warning("Please paste a PRD first.")
     else:
-        with st.spinner("Agents are collaborating… (this may take 30–60 seconds on the free tier)"):
+        with st.spinner("🤖 TPM Crew is collaborating on your backlog..."):
             try:
-                result = run_agentic_workflow(prd_input.strip())
-                st.success("✅ Backlog generation complete!")
-                st.subheader("📋 Generated Jira Tickets")
-                st.markdown(str(result))
+                final_output = run_agentic_workflow(prd_input)
+                st.success("✅ Backlog Generation Complete!")
+                st.markdown(final_output)
             except Exception as e:
-                st.error(f"❌ Error: {e}")
-                st.info("If you see a quota error, wait 1 minute and try again — free tier resets every minute.")
+                st.error(f"Error running agents: {e}")
