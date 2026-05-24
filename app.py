@@ -1,138 +1,111 @@
 import os
 import streamlit as st
-from crewai import Agent, Task, Crew, Process
-from langchain_google_genai import ChatGoogleGenerativeAI
+from crewai import Agent, Crew, Process, Task
 
-st.set_page_config(
-    page_title="CrewAI + Gemini Assistant",
-    page_icon="🤖",
-    layout="wide"
-)
-
-st.title("🤖 CrewAI + Gemini Assistant")
-st.markdown("Build and run AI agent crews powered by Google Gemini.")
-
-api_key = os.environ.get("GOOGLE_API_KEY", "")
+# 1. Grab the key from the environment (Replit used GOOGLE_API_KEY)
+api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 if not api_key:
-    st.error("⚠️ GOOGLE_API_KEY is not set. Please add it to your Secrets.")
+    st.error("⚠️ API Key is not set. Please check your Replit Secrets tool.")
     st.stop()
 
+# CrewAI's native engine looks specifically for GEMINI_API_KEY,
+# so we sync the two variables right here in the code.
+os.environ["GEMINI_API_KEY"] = api_key
 
-@st.cache_resource
-def get_llm():
-    return ChatGoogleGenerativeAI(
-        model="gemini-1.5-flash",
-        google_api_key=api_key,
-        temperature=0.7,
+# 2. Define the model as a simple string.
+# This completely bypasses LangChain and avoids the Pydantic type error!
+gemini_model = "gemini/gemini-2.0-flash"
+
+
+def run_agentic_workflow(prd_text):
+    # 3. Define the TPM Agents using the native model string
+    pm_analyst = Agent(
+        role="Product Management Analyst",
+        goal="Extract high-level features and write perfect user stories from a PRD.",
+        backstory="You are an expert TPM. You take messy feature descriptions and turn them into structured user stories using the standard 'As a... I want to... So that...' format.",
+        verbose=True,
+        llm=gemini_model,
     )
 
-
-with st.sidebar:
-    st.header("⚙️ Crew Configuration")
-
-    st.subheader("Agent 1 — Researcher")
-    researcher_role = st.text_input("Role", value="Senior Research Analyst")
-    researcher_goal = st.text_area(
-        "Goal",
-        value="Uncover cutting-edge developments and gather comprehensive information on the given topic.",
-        height=80,
-    )
-    researcher_backstory = st.text_area(
-        "Backstory",
-        value="You are an expert researcher with years of experience finding accurate, relevant information.",
-        height=80,
+    tech_lead = Agent(
+        role="Technical Lead",
+        goal="Break down user stories into granular engineering tasks and identify technical blockers.",
+        backstory="You are a seasoned Software Architect. You look at user stories and outline the specific backend, frontend, and database tasks required, flagging dependencies.",
+        verbose=True,
+        llm=gemini_model,
     )
 
-    st.divider()
-
-    st.subheader("Agent 2 — Writer")
-    writer_role = st.text_input("Role ", value="Content Strategist")
-    writer_goal = st.text_area(
-        "Goal ",
-        value="Craft compelling, clear, and insightful content based on research findings.",
-        height=80,
-    )
-    writer_backstory = st.text_area(
-        "Backstory ",
-        value="You are a skilled writer who turns complex research into engaging, well-structured content.",
-        height=80,
+    tpm_critic = Agent(
+        role="TPM Quality Assurance Critic",
+        goal="Review the generated tasks to ensure they meet strict acceptance criteria standards.",
+        backstory="You are a meticulous Senior Program Manager. If any engineering task lacks clear Acceptance Criteria or formatting, you reject it and demand a rewrite.",
+        verbose=True,
+        llm=gemini_model,
     )
 
-    st.divider()
-    process_type = st.selectbox(
-        "Process Type",
-        ["Sequential", "Hierarchical"],
-        help="Sequential runs agents one after another. Hierarchical uses a manager agent.",
+    # 4. Define Tasks
+    task1 = Task(
+        description=f"Analyze this PRD text and extract the core User Stories:\n\n{prd_text}",
+        expected_output="A list of clearly formatted User Stories.",
+        agent=pm_analyst,
     )
 
-st.subheader("📋 Define Your Task")
-topic = st.text_input(
-    "Topic / Task",
-    placeholder="e.g. The future of AI in healthcare",
-)
-task_description = st.text_area(
-    "Task Description",
-    value="Research the topic thoroughly and then produce a well-written summary report.",
-    height=100,
-)
-expected_output = st.text_input(
-    "Expected Output",
-    value="A detailed, well-structured report with key findings and insights.",
-)
-
-run_btn = st.button("🚀 Run Crew", type="primary", disabled=not topic.strip())
-
-if run_btn and topic.strip():
-    llm = get_llm()
-
-    researcher = Agent(
-        role=researcher_role,
-        goal=researcher_goal,
-        backstory=researcher_backstory,
-        llm=llm,
-        verbose=False,
-        allow_delegation=False,
+    task2 = Task(
+        description="Take the User Stories and break them down into technical sub-tasks (API, Database, Frontend) with technical notes.",
+        expected_output="Technical implementation breakdown per user story.",
+        agent=tech_lead,
     )
 
-    writer = Agent(
-        role=writer_role,
-        goal=writer_goal,
-        backstory=writer_backstory,
-        llm=llm,
-        verbose=False,
-        allow_delegation=False,
+    task3 = Task(
+        description="Review the output. Ensure every story has clear 'Acceptance Criteria' and is formatted in clean Markdown tables ready for Jira.",
+        expected_output="The final polished markdown output containing Epics, Stories, Technical Tasks, and Acceptance Criteria.",
+        agent=tpm_critic,
     )
 
-    research_task = Task(
-        description=f"Research the following topic in depth: {topic}\n\n{task_description}",
-        expected_output=f"Comprehensive research notes on: {topic}",
-        agent=researcher,
-    )
-
-    writing_task = Task(
-        description=f"Using the research provided, write a polished report on: {topic}",
-        expected_output=expected_output,
-        agent=writer,
-        context=[research_task],
-    )
-
-    process = Process.sequential if process_type == "Sequential" else Process.hierarchical
-
+    # 5. Assemble the Crew
     crew = Crew(
-        agents=[researcher, writer],
-        tasks=[research_task, writing_task],
-        process=process,
-        verbose=False,
+        agents=[pm_analyst, tech_lead, tpm_critic],
+        tasks=[task1, task2, task3],
+        process=Process.sequential,
     )
 
-    with st.spinner("🔄 Crew is working... this may take a moment."):
-        try:
-            result = crew.kickoff()
-            st.success("✅ Crew finished!")
-            st.subheader("📄 Result")
-            st.markdown(str(result))
-        except Exception as e:
-            st.error(f"❌ An error occurred: {e}")
+    return crew.kickoff()
 
-elif not topic.strip() and run_btn:
-    st.warning("Please enter a topic before running the crew.")
+
+# --- Streamlit UI Setup ---
+st.set_page_config(page_title="AI Co-TPM Agent", layout="wide")
+st.title("🤖 AI Co-TPM: PRD to Jira Ticket Generator")
+st.markdown(
+    "**Architecture:** Multi-Agent workflow powered by Google Gemini (PM Analyst -> Tech Lead -> TPM Critic loop)."
+)
+st.markdown("---")
+
+# Preloaded Dummy Data for presentation speed
+dummy_prd = """
+# PRD: User Authentication Upgrade
+We need to add Multi-Factor Authentication (MFA) to our user login flow.
+Users should be able to opt-in via their settings page. We will support TOTP (Google Authenticator).
+If a user has MFA enabled, intercept the login route to require the 6-digit token before issuing a JWT.
+"""
+
+if st.button("✨ Load Demo Dummy PRD"):
+    st.session_state["prd_input"] = dummy_prd.strip()
+
+prd_input = st.text_area(
+    "Paste Product Requirement Document (PRD) here:",
+    value=st.session_state.get("prd_input", ""),
+    height=250,
+)
+
+if st.button("Generate Jira Backlog", type="primary"):
+    if not prd_input:
+        st.warning("Please paste a PRD first.")
+    else:
+        with st.spinner("Gemini Agents are collaborating... (Running Critic Loops)"):
+            try:
+                final_output = run_agentic_workflow(prd_input)
+                st.success("✅ Backlog Generation Complete!")
+                st.markdown("### 📋 Generated Jira Tickets")
+                st.markdown(str(final_output))
+            except Exception as e:
+                st.error(f"Error running agents: {e}")
