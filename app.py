@@ -37,16 +37,67 @@ def run_agentic_workflow(prd_text):
     2. 📋 **Final Jira Backlog**: The polished markdown tables with Epics, Stories, Technical Tasks, and Acceptance Criteria.
     """
 
-    model = genai.GenerativeModel("gemini-2.0-flash")
+    model = genai.GenerativeModel("gemini-2.5-flash")
     response = model.generate_content(prompt)
     return response.text
 
 
 # --- Streamlit UI Setup ---
 st.set_page_config(page_title="AI Co-TPM Agent", layout="wide")
-st.title("🤖 AI Co-TPM: PRD to Jira Ticket Generator")
+
+st.markdown("""
+<style>
+    /* Dell navy top bar */
+    [data-testid="stAppViewContainer"]::before {
+        content: "";
+        display: block;
+        height: 6px;
+        background: linear-gradient(90deg, #003366 0%, #007DB8 100%);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 9999;
+    }
+    /* Primary button — Dell blue */
+    .stButton > button[kind="primary"] {
+        background-color: #007DB8 !important;
+        border: none !important;
+        color: white !important;
+        font-weight: 600 !important;
+        border-radius: 4px !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background-color: #005F8E !important;
+    }
+    /* Secondary button */
+    .stButton > button:not([kind="primary"]) {
+        border: 2px solid #007DB8 !important;
+        color: #007DB8 !important;
+        background-color: transparent !important;
+        border-radius: 4px !important;
+        font-weight: 600 !important;
+    }
+    .stButton > button:not([kind="primary"]):hover {
+        background-color: #E8F4FC !important;
+    }
+    /* Title accent */
+    h1 { color: #003366 !important; }
+    h2, h3 { color: #007DB8 !important; }
+    /* Spinner color */
+    .stSpinner > div { border-top-color: #007DB8 !important; }
+</style>
+""", unsafe_allow_html=True)
+
 st.markdown(
-    "**Architecture:** Multi-Agent Pipeline (PM Analyst ➔ Tech Lead ➔ TPM Critic) optimized for Free-Tier performance."
+    "<h1 style='margin-bottom:0'>🤖 AI Co-TPM: PRD to Jira Ticket Generator</h1>",
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<p style='color:#007DB8;font-size:1rem;margin-top:4px'>"
+    "Multi-Agent Pipeline (PM Analyst ➔ Tech Lead ➔ TPM Critic) &nbsp;|&nbsp; Powered by Google Gemini"
+    "</p>",
+    unsafe_allow_html=True
 )
 st.markdown("---")
 
