@@ -1,0 +1,5 @@
+streamlit>=1.57.0
+google-generativeai>=0.8.6
+crewai>=1.14.5
+langchain-google-genai>=4.2.3
+python-dotenv>=1.2.2
