@@ -2,7 +2,6 @@
 
 A Streamlit web app that converts Product Requirement Documents (PRDs) into structured Jira-ready backlogs using a multi-agent AI pipeline powered by Google Gemini.
 
-Built with Dell Technologies branding.
 
 ---
 
