@@ -2,17 +2,18 @@ import os
 import streamlit as st
 import google.generativeai as genai
 
-# 1. Authenticate using Streamlit Secrets / Environment
+# 1. Authenticate using the key saved in Replit Secrets
 api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
 if not api_key:
-    st.error("⚠️ GOOGLE_API_KEY is not set. Please add it to Streamlit Secrets.")
+    st.error("⚠️ GOOGLE_API_KEY is not set. Please check your Replit Secrets tool.")
     st.stop()
 
 genai.configure(api_key=api_key)
 
 
-# 2. Multi-Agent Emulation Workflow
+# 2. Multi-Agent Emulation Workflow (Single-request architecture)
 def run_agentic_workflow(prd_text):
+    # We instruct the premier 2.0-flash model to run the multi-agent chain internally
     prompt = f"""
     You are an elite AI Technical Program Management Crew consisting of three distinct agents. 
     You must process the following Product Requirement Document (PRD) sequentially and output the collaboration logs along with the final Jira tickets.
@@ -42,28 +43,23 @@ def run_agentic_workflow(prd_text):
 
 
 # --- Streamlit UI Setup ---
-st.set_page_config(
-    page_title="PMArchitect: PRD to Tech Backlog AI",
-    page_icon="🏗️",
-    layout="wide",
-    menu_items={
-        'Get Help': 'https://github.com/keerthidevipriya/PMArchitect',
-        'Report a bug': 'https://github.com/keerthidevipriya/PMArchitect/issues',
-        'About': '### PMArchitect\nAI-powered technical task and backlog generator.'
-    }
-)
+st.set_page_config(page_title="AI Co-TPM Agent", layout="wide")
 
 st.markdown("""
 <style>
+    /* Dell navy top bar */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         display: block;
         height: 6px;
         background: linear-gradient(90deg, #003366 0%, #007DB8 100%);
         position: fixed;
-        top: 0; left: 0; right: 0;
+        top: 0;
+        left: 0;
+        right: 0;
         z-index: 9999;
     }
+    /* Primary button — Dell blue */
     .stButton > button[kind="primary"] {
         background-color: #007DB8 !important;
         border: none !important;
@@ -74,6 +70,7 @@ st.markdown("""
     .stButton > button[kind="primary"]:hover {
         background-color: #005F8E !important;
     }
+    /* Secondary button */
     .stButton > button:not([kind="primary"]) {
         border: 2px solid #007DB8 !important;
         color: #007DB8 !important;
@@ -84,38 +81,27 @@ st.markdown("""
     .stButton > button:not([kind="primary"]):hover {
         background-color: #E8F4FC !important;
     }
+    /* Title accent */
     h1 { color: #003366 !important; }
     h2, h3 { color: #007DB8 !important; }
+    /* Spinner color */
     .stSpinner > div { border-top-color: #007DB8 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# Main Title Header with GitHub Link
-col_title, col_github = st.columns([0.8, 0.2])
-
-with col_title:
-    st.markdown("<h1 style='margin-bottom:0'>🏗️ PMArchitect</h1>", unsafe_allow_html=True)
-    st.markdown(
-        "<p style='color:#007DB8;font-size:1rem;margin-top:4px'>"
-        "Multi-Agent AI Pipeline (PM Analyst ➔ Tech Lead ➔ TPM Critic) &nbsp;|&nbsp; Powered by Google Gemini"
-        "</p>",
-        unsafe_allow_html=True
-    )
-
-with col_github:
-    st.markdown(
-        """
-        <div style="text-align: right; padding-top: 10px;">
-            <a href="https://github.com/keerthidevipriya/PMArchitect" target="_blank" style="text-decoration: none;">
-                <img src="https://img.shields.io/badge/GitHub-PMArchitect-007DB8?style=for-the-badge&logo=github&logoColor=white" alt="GitHub Repository">
-            </a>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
-
+st.markdown(
+    "<h1 style='margin-bottom:0'>🤖 AI Co-TPM: PRD to Jira Ticket Generator</h1>",
+    unsafe_allow_html=True
+)
+st.markdown(
+    "<p style='color:#007DB8;font-size:1rem;margin-top:4px'>"
+    "Multi-Agent Pipeline (PM Analyst ➔ Tech Lead ➔ TPM Critic) &nbsp;|&nbsp; Powered by Google Gemini"
+    "</p>",
+    unsafe_allow_html=True
+)
 st.markdown("---")
 
+# Preloaded Dummy Data
 dummy_prd = """
 # PRD: User Authentication Upgrade
 We need to add Multi-Factor Authentication (MFA) to our user login flow.
@@ -132,7 +118,7 @@ prd_input = st.text_area(
     height=250,
 )
 
-if st.button("🚀 Generate Tech Backlog", type="primary"):
+if st.button("🚀 Generate Jira Backlog", type="primary"):
     if not prd_input:
         st.warning("Please paste a PRD first.")
     else:
