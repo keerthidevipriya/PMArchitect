@@ -8,7 +8,7 @@ if not api_key:
     st.error("⚠️ GOOGLE_API_KEY is not set. Please add it to Streamlit Secrets.")
     st.stop()
 
-# Initialize modern GenAI client
+# Initialize standard GenAI Client
 client = genai.Client(api_key=api_key)
 
 
@@ -37,12 +37,11 @@ def run_agentic_workflow(prd_text):
     2. 📋 **Final Jira Backlog**: The polished markdown tables with Epics, Stories, Technical Tasks, and Acceptance Criteria.
     """
 
-    # Uses the Interactions API format for new Google AI Studio API keys
-    interaction = client.interactions.create(
-        model="gemini-3.6-flash",
-        input=prompt
+    response = client.models.generate_content(
+        model="gemini-3.5-flash",
+        contents=prompt,
     )
-    return interaction.output_text
+    return response.text
 
 
 # --- Streamlit UI Setup ---
@@ -59,7 +58,7 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    /* Top bar gradient */
+    /* Navy top bar */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         display: block;
