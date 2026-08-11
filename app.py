@@ -36,7 +36,8 @@ def run_agentic_workflow(prd_text):
     2. 📋 **Final Jira Backlog**: The polished markdown tables with Epics, Stories, Technical Tasks, and Acceptance Criteria.
     """
 
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    # Properly indented inside the function
+    model = genai.GenerativeModel("gemini-2.0-flash")    
     response = model.generate_content(prompt)
     return response.text
 
