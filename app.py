@@ -1,6 +1,6 @@
 import os
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
 # 1. Authenticate using Streamlit Secrets / Environment
 api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY", "")
@@ -8,10 +8,11 @@ if not api_key:
     st.error("⚠️ GOOGLE_API_KEY is not set. Please add it to Streamlit Secrets.")
     st.stop()
 
-genai.configure(api_key=api_key)
+# Initialize modern GenAI client
+client = genai.Client(api_key=api_key)
 
 
-# 2. Multi-Agent Emulation Workflow (Single-request architecture)
+# 2. Multi-Agent Emulation Workflow
 def run_agentic_workflow(prd_text):
     prompt = f"""
     You are an elite AI Technical Program Management Crew consisting of three distinct agents. 
@@ -36,8 +37,10 @@ def run_agentic_workflow(prd_text):
     2. 📋 **Final Jira Backlog**: The polished markdown tables with Epics, Stories, Technical Tasks, and Acceptance Criteria.
     """
 
-    model = genai.GenerativeModel("gemini-1.5-flash-latest")
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        contents=prompt,
+    )
     return response.text
 
 
@@ -62,12 +65,9 @@ st.markdown("""
         height: 6px;
         background: linear-gradient(90deg, #003366 0%, #007DB8 100%);
         position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
+        top: 0; left: 0; right: 0;
         z-index: 9999;
     }
-    /* Primary button — Dell blue */
     .stButton > button[kind="primary"] {
         background-color: #007DB8 !important;
         border: none !important;
@@ -78,7 +78,6 @@ st.markdown("""
     .stButton > button[kind="primary"]:hover {
         background-color: #005F8E !important;
     }
-    /* Secondary button */
     .stButton > button:not([kind="primary"]) {
         border: 2px solid #007DB8 !important;
         color: #007DB8 !important;
@@ -89,15 +88,13 @@ st.markdown("""
     .stButton > button:not([kind="primary"]):hover {
         background-color: #E8F4FC !important;
     }
-    /* Title accent */
     h1 { color: #003366 !important; }
     h2, h3 { color: #007DB8 !important; }
-    /* Spinner color */
     .stSpinner > div { border-top-color: #007DB8 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# Main Header with GitHub Button
+# Main Title Header with GitHub Link
 col_title, col_github = st.columns([0.8, 0.2])
 
 with col_title:

@@ -1,5 +1,2 @@
 streamlit
 google-genai
-crewai>=1.14.5
-langchain-google-genai>=4.2.3
-python-dotenv>=1.2.2
