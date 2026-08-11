@@ -37,11 +37,12 @@ def run_agentic_workflow(prd_text):
     2. 📋 **Final Jira Backlog**: The polished markdown tables with Epics, Stories, Technical Tasks, and Acceptance Criteria.
     """
 
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents=prompt,
+    # Uses the Interactions API format for new Google AI Studio API keys
+    interaction = client.interactions.create(
+        model="gemini-3.6-flash",
+        input=prompt
     )
-    return response.text
+    return interaction.output_text
 
 
 # --- Streamlit UI Setup ---
@@ -58,7 +59,7 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    /* Dell navy top bar */
+    /* Top bar gradient */
     [data-testid="stAppViewContainer"]::before {
         content: "";
         display: block;
@@ -104,7 +105,7 @@ with col_title:
     )
     st.markdown(
         "<p style='color:#007DB8;font-size:1rem;margin-top:4px'>"
-        "Multi-Agent Pipeline (PM Analyst ➔ Tech Lead ➔ TPM Critic) &nbsp;|&nbsp; Powered by Google Gemini"
+        "Multi-Agent Pipeline (PM Analyst ➔ Tech Lead ➔ PMArchitect) &nbsp;|&nbsp; Powered by Google Gemini"
         "</p>",
         unsafe_allow_html=True
     )
