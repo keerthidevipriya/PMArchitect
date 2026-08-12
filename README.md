@@ -1,4 +1,4 @@
-# 🤖 AI Co-TPM: PRD to Jira Ticket Generator
+# 🤖 AI PMArchitect: PRD to Jira Ticket Generator
 
 A Streamlit web app that converts Product Requirement Documents (PRDs) into structured Jira-ready backlogs using a multi-agent AI pipeline powered by Google Gemini.
 
@@ -93,4 +93,4 @@ This app is designed to work within Google AI Studio's free tier:
 
 ## License
 
-MIT
+Will update soon by keerthi!
